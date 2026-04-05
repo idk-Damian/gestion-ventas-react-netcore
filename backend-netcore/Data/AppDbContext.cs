@@ -20,6 +20,21 @@ namespace backend_netcore.Data
             modelBuilder.Entity<Producto>().ToTable("Producto");
             modelBuilder.Entity<Venta>().ToTable("Venta");
             modelBuilder.Entity<VentaDetalle>().ToTable("VentaDetalle");
+
+            modelBuilder.Entity<Venta>()
+                .HasOne(v => v.Cliente)
+                .WithMany()
+                .HasForeignKey(v => v.IdCliente);
+
+            modelBuilder.Entity<VentaDetalle>()
+                .HasOne(vd => vd.Venta)
+                .WithMany(v => v.Detalles)
+                .HasForeignKey(vd => vd.IdVenta);
+
+            modelBuilder.Entity<VentaDetalle>()
+                .HasOne(vd => vd.Producto)
+                .WithMany()
+                .HasForeignKey(vd => vd.IdProducto);
         }
     }
 }
