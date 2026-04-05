@@ -1,0 +1,21 @@
+# Node
+node_modules/
+dist/
+build/
+
+# React
+.env
+
+# .NET
+bin/
+obj
+.vs/
+
+# Logs
+*.log
+
+# Windows
+Thumbs.db
+
+# Mac
+.DS_Store
