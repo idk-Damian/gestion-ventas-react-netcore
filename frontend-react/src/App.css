@@ -1,0 +1,46 @@
+/* src/App.css */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; font-size: 13px; background: #f0f0f0; }
+
+header { background: #1a3a5c; padding: 8px 16px; }
+header nav a { color: white; margin-right: 16px; text-decoration: none; font-weight: bold; }
+header nav a:hover { text-decoration: underline; }
+
+main { padding: 16px; }
+
+.page h2 { text-align: center; font-size: 18px; margin-bottom: 12px;
+           background: #e8e8e8; padding: 8px; border-bottom: 2px solid #1a3a5c; }
+
+.card { background: white; border: 1px solid #ccc; padding: 12px; margin-bottom: 12px; }
+.card h3 { font-size: 11px; font-weight: bold; margin-bottom: 8px;
+           background: #ddd; padding: 4px 8px; }
+
+.form-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; align-items: center; }
+.form-row label { font-size: 12px; }
+.form-row input, .form-row select {
+  border: 1px solid #999; padding: 2px 6px; font-size: 12px; margin-left: 4px;
+}
+.form-row span { font-weight: bold; margin-left: 4px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+th { background: #1a3a5c; color: white; padding: 4px 8px; text-align: left; }
+td { border-bottom: 1px solid #ddd; padding: 4px 8px; }
+tr:nth-child(even) { background: #f9f9f9; }
+tr.selected, tr:hover { background: #cce5ff; }
+
+.totales { text-align: right; margin-top: 8px; }
+.totales div { display: flex; justify-content: flex-end; gap: 24px; padding: 2px 8px; }
+.total-final { font-weight: bold; font-size: 14px; background: #e8f0fe; }
+
+.total-row { display: flex; justify-content: flex-end; gap: 24px;
+             font-weight: bold; padding: 4px 8px; background: #e8e8e8; margin-top: 8px; }
+
+.acciones { margin-top: 12px; display: flex; gap: 8px; }
+.btn-guardar { background: #1a3a5c; color: white; border: none; padding: 6px 16px;
+               cursor: pointer; font-size: 13px; }
+.btn-guardar:hover { background: #0d2a47; }
+.btn-limpiar { background: #888; color: white; border: none; padding: 6px 16px;
+               cursor: pointer; font-size: 13px; }
+.error   { color: red;   font-size: 12px; margin-top: 4px; }
+.mensaje { margin-top: 8px; font-weight: bold; }
+button { cursor: pointer; }
