@@ -1,12 +1,12 @@
-// src/pages/VentaProductos.jsx
 import { useEffect, useState } from 'react'
 import { buscarClientePorCedula } from '../services/clienteService'
-import { getProductos }          from '../services/productoService'
-import { crearVenta }            from '../services/ventaService'
+import { getProductos } from '../services/productoService'
+import { crearVenta } from '../services/ventaService'
 
 const IVA = 0.15
 
 export default function VentaProductos() {
+
   /* ── Estado ─────────────────────────────── */
   const [fechaVenta]         = useState(new Date().toLocaleDateString('es-EC'))
   const [numeroDocumento, setNumeroDocumento] = useState('')
@@ -15,14 +15,16 @@ export default function VentaProductos() {
   const [clienteError, setClienteError] = useState('')
 
   const [productos, setProductos] = useState([])
-  const [productoId,   setProductoId]   = useState('')
+  const [modalAbierto, setModalAbierto] = useState(false)
+  const [busqueda, setBusqueda]   = useState('')
+  const [productoSel, setProductoSel] = useState(null)
   const [cantidad,  setCantidad]  = useState('')
-  const [detalles,  setDetalles]  = useState([])   // filas de la venta
+  const [detalles,  setDetalles]  = useState([])
 
   const [mensaje,   setMensaje]   = useState('')
   const [guardando, setGuardando] = useState(false)
 
-  /* ── Cargar productos al montar ─────────── */
+  /* ── Cargar productos ───────────────────── */
   useEffect(() => {
     getProductos().then(res => setProductos(res.data))
   }, [])
@@ -40,34 +42,44 @@ export default function VentaProductos() {
     }
   }
 
-  /* ── Agregar producto al detalle ────────── */
-  const agregarProducto = () => {
-    const prod = productos.find(p => p.id === parseInt(productoId))
-    const qty  = parseInt(cantidad)
-    if (!prod || qty <= 0 || qty > prod.stock) return
+  /* ── Seleccionar producto desde modal ───── */
+  const seleccionarProducto = (prod) => {
+    setProductoSel(prod)
+    setModalAbierto(false)
+    setBusqueda('')
+  }
 
-    const existe = detalles.find(d => d.idProducto === prod.id)
+  /* ── Agregar al detalle ─────────────────── */
+  const agregarProducto = () => {
+    if (!productoSel) return alert('Seleccione un producto')
+    const qty = parseInt(cantidad)
+    if (!qty || qty <= 0)          return alert('Ingrese una cantidad válida')
+    if (qty > productoSel.stock)   return alert(`Stock disponible: ${productoSel.stock}`)
+
+    const existe = detalles.find(d => d.idProducto === productoSel.id)
     if (existe) {
+      const nuevaCant = existe.cantidad + qty
+      if (nuevaCant > productoSel.stock) return alert(`Stock disponible: ${productoSel.stock}`)
       setDetalles(detalles.map(d =>
-        d.idProducto === prod.id
-          ? { ...d, cantidad: d.cantidad + qty, subtotal: (d.cantidad + qty) * prod.precio }
+        d.idProducto === productoSel.id
+          ? { ...d, cantidad: nuevaCant, subtotal: nuevaCant * productoSel.precio }
           : d
       ))
     } else {
       setDetalles([...detalles, {
-        idProducto:     prod.id,
-        nombreComercial: prod.nombreComercial,
-        presentacion:   prod.presentacion,
-        precioUnitario: prod.precio,
-        cantidad:       qty,
-        subtotal:       qty * prod.precio
+        idProducto:      productoSel.id,
+        nombreComercial: productoSel.nombreComercial,
+        presentacion:    productoSel.presentacion,
+        precioUnitario:  productoSel.precio,
+        cantidad:        qty,
+        subtotal:        qty * productoSel.precio
       }])
     }
-    setProductoId('')
+    setProductoSel(null)
     setCantidad('')
   }
 
-  /* ── Eliminar fila del detalle ──────────── */
+  /* ── Eliminar fila ──────────────────────── */
   const eliminarDetalle = (id) =>
     setDetalles(detalles.filter(d => d.idProducto !== id))
 
@@ -78,9 +90,9 @@ export default function VentaProductos() {
 
   /* ── Guardar venta ──────────────────────── */
   const guardarVenta = async () => {
-    if (!cliente)           return alert('Seleccione un cliente')
-    if (detalles.length===0) return alert('Agregue al menos un producto')
-    if (!numeroDocumento)   return alert('Ingrese el número de comprobante')
+    if (!cliente)            return alert('Seleccione un cliente')
+    if (detalles.length === 0) return alert('Agregue al menos un producto')
+    if (!numeroDocumento)    return alert('Ingrese el número de comprobante')
 
     setGuardando(true)
     try {
@@ -105,89 +117,105 @@ export default function VentaProductos() {
     }
   }
 
-  /* ── Render ─────────────────────────────── */
-  const productoSeleccionado = productos.find(p => p.id === parseInt(productoId))
+  /* ── Productos filtrados en modal ───────── */
+  const productosFiltrados = productos.filter(p =>
+    p.nombreComercial.toLowerCase().includes(busqueda.toLowerCase()) ||
+    (p.nombreGenerico || '').toLowerCase().includes(busqueda.toLowerCase())
+  )
 
+  /* ── Render ─────────────────────────────── */
   return (
     <div className="page">
       <h2>Venta de Productos</h2>
 
       {/* ── DATOS DE VENTA ── */}
-      <section className="card">
-        <h3>DATOS DE VENTA</h3>
-        <div className="form-row">
-          <label>Fecha Venta: <span>{fechaVenta}</span></label>
-          <label>
-            N° Comprobante:
-            <input
-              value={numeroDocumento}
-              onChange={e => setNumeroDocumento(e.target.value)}
-              placeholder="2026-UTA-0001"
-            />
-          </label>
-        </div>
-      </section>
+<section className="card">
+  <h3>DATOS DE VENTA</h3>
+  <div className="cliente-grid">
+    <div className="cliente-campo">
+      <label>Fecha Venta</label>
+      <span className="campo-valor">{fechaVenta}</span>
+    </div>
+    <div className="cliente-campo">
+      <label>N° Comprobante</label>
+      <input
+        value={numeroDocumento}
+        onChange={e => setNumeroDocumento(e.target.value)}
+        placeholder="2026-UTA-0001"
+        style={{ width: '180px' }}
+      />
+    </div>
+  </div>
+</section>
 
       {/* ── DATOS DEL CLIENTE ── */}
-      <section className="card">
-        <h3>DATOS DEL CLIENTE</h3>
-        <div className="form-row">
-          <label>
-            Cédula/RUC:
-            <input
-              value={cedula}
-              onChange={e => setCedula(e.target.value)}
-              onBlur={buscarCliente}
-              onKeyDown={e => e.key === 'Enter' && buscarCliente()}
-              placeholder="1801..."
-            />
-          </label>
-          <label>Teléfono: <span>{cliente?.telefono ?? ''}</span></label>
-        </div>
-        <div className="form-row">
-          <label>Apellidos: <span>{cliente?.apellido ?? ''}</span></label>
-          <label>Dirección: <span>{cliente?.direccion ?? ''}</span></label>
-        </div>
-        <div className="form-row">
-          <label>Nombres: <span>{cliente?.nombre ?? ''}</span></label>
-          <label>Correo: <span>{cliente?.correo ?? ''}</span></label>
-        </div>
-        {clienteError && <p className="error">{clienteError}</p>}
-      </section>
+<section className="card">
+  <h3>DATOS DEL CLIENTE</h3>
+  <div className="cliente-grid">
+    <div className="cliente-campo">
+      <label>Cédula/RUC</label>
+      <input
+        value={cedula}
+        onChange={e => setCedula(e.target.value)}
+        onBlur={buscarCliente}
+        onKeyDown={e => e.key === 'Enter' && buscarCliente()}
+        placeholder="1801..."
+      />
+    </div>
+    <div className="cliente-campo">
+      <label>Teléfono</label>
+      <span className="campo-valor">{cliente?.telefono ?? ''}</span>
+    </div>
+    <div className="cliente-campo">
+      <label>Apellidos</label>
+      <span className="campo-valor">{cliente?.apellido ?? ''}</span>
+    </div>
+    <div className="cliente-campo">
+      <label>Dirección</label>
+      <span className="campo-valor">{cliente?.direccion ?? ''}</span>
+    </div>
+    <div className="cliente-campo">
+      <label>Nombres</label>
+      <span className="campo-valor">{cliente?.nombre ?? ''}</span>
+    </div>
+    <div className="cliente-campo">
+      <label>Correo</label>
+      <span className="campo-valor">{cliente?.correo ?? ''}</span>
+    </div>
+  </div>
+  {clienteError && <p className="error" style={{padding: '0 16px 10px'}}>{clienteError}</p>}
+</section>
 
       {/* ── DATOS DEL DETALLE ── */}
       <section className="card">
         <h3>DATOS DEL DETALLE DE VENTA</h3>
 
         {/* Fila de ingreso */}
-        <div className="form-row">
-          <label>
-            Nombre Comercial:
-            <select value={productoId} onChange={e => setProductoId(e.target.value)}>
-              <option value="">-- Seleccione --</option>
-              {productos.map(p => (
-                <option key={p.id} value={p.id}>{p.nombreComercial}</option>
-              ))}
-            </select>
-          </label>
-          <label>Nombre Genérico:
-            <span>{productoSeleccionado?.nombreGenerico ?? ''}</span>
-          </label>
-          <label>Presentación:
-            <span>{productoSeleccionado?.presentacion ?? ''}</span>
-          </label>
-          <label>Precio:
-            <span>{productoSeleccionado?.precio?.toFixed(2) ?? ''}</span>
-          </label>
-          <label>
+        <div className="form-row" style={{ alignItems: 'center' }}>
+          <button className="btn-buscar" onClick={() => setModalAbierto(true)}>
+            🔍 Buscar Producto
+          </button>
+
+          {productoSel && (
+            <div className="producto-sel-info">
+              <span><b>{productoSel.nombreComercial}</b></span>
+              <span>{productoSel.nombreGenerico}</span>
+              <span>{productoSel.presentacion}</span>
+              <span>Precio: <b>${productoSel.precio?.toFixed(2)}</b></span>
+              <span>Stock: <b>{productoSel.stock}</b></span>
+            </div>
+          )}
+
+          <label style={{ marginLeft: 'auto' }}>
             Cantidad:
             <input
               type="number" min="1"
               value={cantidad}
               onChange={e => setCantidad(e.target.value)}
+              style={{ width: '70px', marginLeft: '6px' }}
             />
           </label>
-          <button onClick={agregarProducto}>+ Agregar</button>
+          <button className="btn-guardar" onClick={agregarProducto}>+ Agregar</button>
         </div>
 
         {/* Tabla de detalles */}
@@ -195,36 +223,46 @@ export default function VentaProductos() {
           <thead>
             <tr>
               <th>Id</th>
-              <th>NombreComercial</th>
+              <th>Nombre Comercial</th>
               <th>Presentación</th>
               <th>Cantidad</th>
-              <th>PrecioVenta</th>
+              <th>Precio</th>
               <th>Subtotal</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {detalles.map((d, i) => (
-              <tr key={i}>
-                <td>{d.idProducto}</td>
-                <td>{d.nombreComercial}</td>
-                <td>{d.presentacion}</td>
-                <td>{d.cantidad}</td>
-                <td>{d.precioUnitario.toFixed(2)}</td>
-                <td>{d.subtotal.toFixed(2)}</td>
-                <td>
-                  <button onClick={() => eliminarDetalle(d.idProducto)}>✕</button>
-                </td>
-              </tr>
-            ))}
+            {detalles.length === 0 ? (
+              <tr><td colSpan="7" style={{ textAlign: 'center', color: '#999' }}>
+                Sin productos agregados
+              </td></tr>
+            ) : (
+              detalles.map((d, i) => (
+                <tr key={i}>
+                  <td>{d.idProducto}</td>
+                  <td>{d.nombreComercial}</td>
+                  <td>{d.presentacion}</td>
+                  <td>{d.cantidad}</td>
+                  <td>{d.precioUnitario.toFixed(2)}</td>
+                  <td>{d.subtotal.toFixed(2)}</td>
+                  <td>
+                    <button onClick={() => eliminarDetalle(d.idProducto)}
+                            style={{ background: '#c0392b', color: 'white',
+                                     border: 'none', padding: '2px 8px', cursor: 'pointer' }}>
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
 
         {/* Totales */}
         <div className="totales">
-          <div><span>SUBTOTAL</span><span>{subtotal.toFixed(2)}</span></div>
-          <div><span>IVA (15%)</span><span>{iva.toFixed(2)}</span></div>
-          <div className="total-final"><span>TOTAL</span><span>{total.toFixed(2)}</span></div>
+          <div><span>SUBTOTAL</span><span>${subtotal.toFixed(2)}</span></div>
+          <div><span>IVA (15%)</span><span>${iva.toFixed(2)}</span></div>
+          <div className="total-final"><span>TOTAL</span><span>${total.toFixed(2)}</span></div>
         </div>
 
         {/* Acciones */}
@@ -232,14 +270,72 @@ export default function VentaProductos() {
           <button onClick={guardarVenta} disabled={guardando} className="btn-guardar">
             {guardando ? 'Guardando...' : '💾 Guardar Venta'}
           </button>
-          <button onClick={() => { setDetalles([]); setCliente(null); setCedula(''); }}
-                  className="btn-limpiar">
+          <button onClick={() => {
+            setDetalles([])
+            setCliente(null)
+            setCedula('')
+            setNumeroDocumento('')
+            setProductoSel(null)
+            setCantidad('')
+            setMensaje('')
+          }} className="btn-limpiar">
             🗑 Limpiar
           </button>
         </div>
 
         {mensaje && <p className="mensaje">{mensaje}</p>}
       </section>
+
+      {/* ── MODAL DE PRODUCTOS ── */}
+      {modalAbierto && (
+        <div className="modal-overlay" onClick={() => setModalAbierto(false)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Seleccionar Producto</h3>
+              <button className="modal-close" onClick={() => setModalAbierto(false)}>✕</button>
+            </div>
+
+            <input
+              className="modal-search"
+              placeholder="Buscar por nombre comercial o genérico..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              autoFocus
+            />
+
+            <div className="modal-tabla-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Id</th>
+                    <th>Nombre Comercial</th>
+                    <th>Nombre Genérico</th>
+                    <th>Presentación</th>
+                    <th>Precio</th>
+                    <th>Stock</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {productosFiltrados.map(p => (
+                    <tr
+                      key={p.id}
+                      className="modal-fila"
+                      onClick={() => seleccionarProducto(p)}
+                    >
+                      <td>{p.id}</td>
+                      <td>{p.nombreComercial}</td>
+                      <td>{p.nombreGenerico}</td>
+                      <td>{p.presentacion}</td>
+                      <td>${p.precio?.toFixed(2)}</td>
+                      <td>{p.stock}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
