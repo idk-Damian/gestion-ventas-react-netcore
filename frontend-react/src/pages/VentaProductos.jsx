@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { buscarClientePorCedula } from '../services/clienteService'
 import { getProductos } from '../services/productoService'
 import { crearVenta } from '../services/ventaService'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const IVA = 0.15
 
@@ -22,6 +24,7 @@ export default function VentaProductos() {
   const [detalles,  setDetalles]  = useState([])
 
   const [mensaje,   setMensaje]   = useState('')
+  const [facturaGenerada, setFacturaGenerada] = useState(null)
   const [guardando, setGuardando] = useState(false)
 
   /* ── Cargar productos ───────────────────── */
@@ -89,33 +92,114 @@ export default function VentaProductos() {
   const total    = subtotal + iva
 
   /* ── Guardar venta ──────────────────────── */
-  const guardarVenta = async () => {
-    if (!cliente)            return alert('Seleccione un cliente')
-    if (detalles.length === 0) return alert('Agregue al menos un producto')
-    if (!numeroDocumento)    return alert('Ingrese el número de comprobante')
+  
 
-    setGuardando(true)
-    try {
-      const body = {
-        idCliente:       cliente.id,
-        numeroDocumento: numeroDocumento,
-        detalles: detalles.map(d => ({
-          idProducto: d.idProducto,
-          cantidad:   d.cantidad
-        }))
-      }
-      const res = await crearVenta(body)
-      setMensaje(`✅ Venta #${res.data.id} registrada. Total: $${res.data.total}`)
-      setDetalles([])
-      setCliente(null)
-      setCedula('')
-      setNumeroDocumento('')
-    } catch (err) {
-      setMensaje('❌ ' + (err.response?.data || 'Error al guardar'))
-    } finally {
-      setGuardando(false)
+const guardarVenta = async () => {
+  if (!cliente) return alert('Seleccione un cliente')
+  if (detalles.length === 0) return alert('Agregue al menos un producto')
+  if (!numeroDocumento) return alert('Ingrese el número de comprobante')
+
+  setGuardando(true)
+  try {
+    const body = {
+      idCliente: cliente.id,
+      numeroDocumento: numeroDocumento,
+      detalles: detalles.map(d => ({
+        idProducto: d.idProducto,
+        cantidad: d.cantidad
+      }))
     }
+
+    const res = await crearVenta(body)
+
+    const factura = {
+      idVenta: res.data.id,
+      fechaVenta,
+      numeroDocumento,
+      cliente: {
+        id: cliente.id,
+        cedula: cedula,
+        nombre: cliente.nombre,
+        apellido: cliente.apellido,
+        telefono: cliente.telefono,
+        direccion: cliente.direccion,
+        correo: cliente.correo
+      },
+      detalles: detalles,
+      subtotal,
+      iva,
+      total
+    }
+
+    setFacturaGenerada(factura)
+
+    setMensaje(`✅ Venta #${res.data.id} registrada. Total: $${res.data.total}`)
+
+    setDetalles([])
+    setCliente(null)
+    setCedula('')
+    setNumeroDocumento('')
+  } catch (err) {
+    setMensaje('❌ ' + (err.response?.data || 'Error al guardar'))
+  } finally {
+    setGuardando(false)
   }
+}
+
+/*--------------------------------------*/
+
+const generarPDF = () => {
+  if (!facturaGenerada) {
+    alert('Primero debes guardar una venta')
+    return
+  }
+
+  const doc = new jsPDF()
+
+  doc.setFontSize(16)
+  doc.text('FACTURA DE VENTA', 14, 18)
+
+  doc.setFontSize(10)
+  doc.text(`Fecha: ${facturaGenerada.fechaVenta}`, 14, 28)
+  doc.text(`N° Comprobante: ${facturaGenerada.numeroDocumento}`, 140, 28)
+
+  doc.text('DATOS DEL CLIENTE', 14, 40)
+  doc.text(`Cédula/RUC: ${facturaGenerada.cliente.cedula}`, 14, 48)
+  doc.text(`Nombres: ${facturaGenerada.cliente.nombre}`, 14, 54)
+  doc.text(`Apellidos: ${facturaGenerada.cliente.apellido}`, 14, 60)
+  doc.text(`Teléfono: ${facturaGenerada.cliente.telefono || ''}`, 110, 48)
+  doc.text(`Dirección: ${facturaGenerada.cliente.direccion || ''}`, 110, 54)
+  doc.text(`Correo: ${facturaGenerada.cliente.correo || ''}`, 110, 60)
+
+  autoTable(doc, {
+    startY: 70,
+    head: [[
+      'Id',
+      'Nombre Comercial',
+      'Presentación',
+      'Cantidad',
+      'Precio Unit.',
+      'Subtotal'
+    ]],
+    body: facturaGenerada.detalles.map(d => [
+      d.idProducto,
+      d.nombreComercial,
+      d.presentacion,
+      d.cantidad,
+      `$${Number(d.precioUnitario).toFixed(2)}`,
+      `$${Number(d.subtotal).toFixed(2)}`
+    ]),
+  })
+
+  const finalY = doc.lastAutoTable.finalY + 10
+
+  doc.text(`Subtotal: $${Number(facturaGenerada.subtotal).toFixed(2)}`, 140, finalY)
+  doc.text(`IVA (15%): $${Number(facturaGenerada.iva).toFixed(2)}`, 140, finalY + 8)
+  doc.setFontSize(12)
+  doc.text(`TOTAL: $${Number(facturaGenerada.total).toFixed(2)}`, 140, finalY + 18)
+
+  doc.save(`factura_${facturaGenerada.numeroDocumento}.pdf`)
+}
 
   /* ── Productos filtrados en modal ───────── */
   const productosFiltrados = productos.filter(p =>
@@ -266,22 +350,31 @@ export default function VentaProductos() {
         </div>
 
         {/* Acciones */}
-        <div className="acciones">
-          <button onClick={guardarVenta} disabled={guardando} className="btn-guardar">
-            {guardando ? 'Guardando...' : '💾 Guardar Venta'}
-          </button>
-          <button onClick={() => {
-            setDetalles([])
-            setCliente(null)
-            setCedula('')
-            setNumeroDocumento('')
-            setProductoSel(null)
-            setCantidad('')
-            setMensaje('')
-          }} className="btn-limpiar">
-            🗑 Limpiar
-          </button>
-        </div>
+<div className="acciones">
+  <button onClick={guardarVenta} disabled={guardando} className="btn-guardar">
+    {guardando ? 'Guardando...' : '💾 Guardar Venta'}
+  </button>
+
+  <button
+    onClick={generarPDF}
+    disabled={!facturaGenerada}
+    className="btn-guardar"
+  >
+    📄 Generar PDF
+  </button>
+
+  <button onClick={() => {
+    setDetalles([])
+    setCliente(null)
+    setCedula('')
+    setNumeroDocumento('')
+    setProductoSel(null)
+    setCantidad('')
+    setMensaje('')
+  }} className="btn-limpiar">
+    🗑 Limpiar
+  </button>
+</div>
 
         {mensaje && <p className="mensaje">{mensaje}</p>}
       </section>
