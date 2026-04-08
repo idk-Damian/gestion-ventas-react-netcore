@@ -9,9 +9,9 @@ namespace backend_netcore.Controllers
     [Route("api/[controller]")]
     public class ProductoController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly GestionVDbContext _context;
 
-        public ProductoController(AppDbContext context)
+        public ProductoController(GestionVDbContext context)
         {
             _context = context;
         }

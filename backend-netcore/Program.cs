@@ -10,8 +10,11 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<ClientesDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ClientesDB")));
+
+builder.Services.AddDbContext<GestionVDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("GestionVDB")));
 
 builder.Services.AddCors(options =>
 {

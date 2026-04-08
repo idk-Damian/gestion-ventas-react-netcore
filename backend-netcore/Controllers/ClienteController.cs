@@ -9,9 +9,9 @@ namespace backend_netcore.Controllers
     [Route("api/[controller]")]
     public class ClienteController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly ClientesDbContext _context;
 
-        public ClienteController(AppDbContext context)
+        public ClienteController(ClientesDbContext context)
         {
             _context = context;
         }
@@ -19,13 +19,13 @@ namespace backend_netcore.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Cliente>>> GetClientes()
         {
-            return await _context.Cliente.ToListAsync();
+            return await _context.Clientes.ToListAsync();
         }
 
         [HttpGet("buscar/{cedula}")]
         public async Task<ActionResult<Cliente>> BuscarPorCedula(string cedula)
         {
-            var cliente = await _context.Cliente.FirstOrDefaultAsync(c => c.Cedula == cedula);
+            var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.Cedula == cedula);
 
             if (cliente == null)
             {
@@ -38,7 +38,7 @@ namespace backend_netcore.Controllers
         [HttpPost]
         public async Task<ActionResult<Cliente>> CrearCliente(Cliente cliente)
         {
-            _context.Cliente.Add(cliente);
+            _context.Clientes.Add(cliente);
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(BuscarPorCedula), new { cedula = cliente.Cedula }, cliente);
         }

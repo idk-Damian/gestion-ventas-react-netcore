@@ -10,18 +10,19 @@ namespace backend_netcore.Controllers
     [Route("api/[controller]")]
     public class VentaController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly GestionVDbContext _gestionContext;
+        private readonly ClientesDbContext _clientesContext;
 
-        public VentaController(AppDbContext context)
+        public VentaController(GestionVDbContext gestionContext, ClientesDbContext clientesContext)
         {
-            _context = context;
+            _gestionContext = gestionContext;
+            _clientesContext = clientesContext;
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Venta>>> GetVentas()
         {
-            return await _context.Venta
-                .Include(v => v.Cliente)
+            return await _gestionContext.Venta
                 .Include(v => v.Detalles!)
                 .ToListAsync();
         }
@@ -29,8 +30,7 @@ namespace backend_netcore.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Venta>> GetVenta(int id)
         {
-            var venta = await _context.Venta
-                .Include(v => v.Cliente)
+            var venta = await _gestionContext.Venta
                 .Include(v => v.Detalles!)
                 .FirstOrDefaultAsync(v => v.Id == id);
 
@@ -50,7 +50,7 @@ namespace backend_netcore.Controllers
                 return BadRequest("La venta debe tener al menos un producto.");
             }
 
-            var cliente = await _context.Cliente.FindAsync(request.IdCliente);
+            var cliente = await _clientesContext.Clientes.FindAsync(request.IdCliente);
             if (cliente == null)
             {
                 return BadRequest("Cliente no encontrado.");
@@ -63,7 +63,7 @@ namespace backend_netcore.Controllers
 
             foreach (var item in request.Detalles)
             {
-                var producto = await _context.Producto.FindAsync(item.IdProducto);
+                var producto = await _gestionContext.Producto.FindAsync(item.IdProducto);
 
                 if (producto == null)
                 {
@@ -108,8 +108,8 @@ namespace backend_netcore.Controllers
                 Detalles = detallesVenta
             };
 
-            _context.Venta.Add(venta);
-            await _context.SaveChangesAsync();
+            _gestionContext.Venta.Add(venta);
+            await _gestionContext.SaveChangesAsync();
 
             return Ok(new
             {
