@@ -10,7 +10,6 @@ namespace backend_netcore.Models
         public decimal Iva { get; set; }
         public decimal Total { get; set; }
 
-        public Cliente? Cliente { get; set; }
         public List<VentaDetalle>? Detalles { get; set; }
     }
 }
